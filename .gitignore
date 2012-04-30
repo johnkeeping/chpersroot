@@ -1,0 +1,4 @@
+config.mak
+
+*.o
+chpersroot
