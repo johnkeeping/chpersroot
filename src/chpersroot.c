@@ -23,9 +23,9 @@
 
 
 static inline void*
-xmalloc(size_t nmemb, size_t size)
+xmalloc(size_t size)
 {
-	void* result = calloc(nmemb, size);
+	void* result = malloc(size);
 	if (!result)
 		err(EXIT_FAILURE, "out of memory");
 
@@ -64,18 +64,18 @@ main(int argc, char* argv[])
 	if (!pw)
 		err(EXIT_FAILURE, "getpwuid");
 	n_groups = getgroups(0, NULL);
-	groups = xmalloc(sizeof(gid_t), n_groups);
+	groups = xmalloc(sizeof(gid_t) * n_groups);
 	if (!getgroups(n_groups, groups))
 		err(EXIT_FAILURE, "getgroups");
 
 	if (argc > 1) {
-		args = xmalloc(argc, sizeof(char*));
+		args = xmalloc(argc * sizeof(char*));
 		memcpy(args, argv + 1, sizeof(char*) * (argc - 1));
 		args[argc - 1] = NULL;
 		/* TODO: Use "/bin/sh -c"? */
 		cmd = args[0];
 	} else {
-		args = xmalloc(2, sizeof(char*));
+		args = xmalloc(2 * sizeof(char*));
 		/* FIXME: Use shell from pw. */
 		cmd = "/bin/bash";
 		args[0] = "-bash";
