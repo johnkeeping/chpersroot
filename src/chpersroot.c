@@ -33,13 +33,6 @@ xmalloc(size_t size)
 }
 
 static void
-switch_to_linux32(void)
-{
-	if (set_pers(PER_LINUX32))
-		err(EXIT_FAILURE, "set_pers");
-}
-
-static void
 switch_root(const char* root, const char* dir)
 {
 	if (chroot(root))
@@ -48,6 +41,17 @@ switch_root(const char* root, const char* dir)
 		err(EXIT_FAILURE, "chdir to /");
 	if (chdir(dir))
 		err(EXIT_FAILURE, "chdir to home");
+}
+
+static void
+set_user(struct passwd* pw, gid_t* groups, int n_groups)
+{
+	if (setgroups(n_groups, groups))
+		err(EXIT_FAILURE, "setgroups");
+	if (setuid(pw->pw_uid))
+		err(EXIT_FAILURE, "setuid to user");
+	if (setgid(pw->pw_gid))
+		err(EXIT_FAILURE, "setgid");
 }
 
 int
@@ -82,16 +86,12 @@ main(int argc, char* argv[])
 		args[1] = NULL;
 	}
 
-	switch_to_linux32();
+	if (set_pers(PER_LINUX32))
+		err(EXIT_FAILURE, "set_pers");
 	if (setuid(0))
 		err(EXIT_FAILURE, "setuid to root");
 	switch_root(ROOT_DIR, pw->pw_dir);
-	if (setgroups(n_groups, groups))
-		err(EXIT_FAILURE, "setgroups");
-	if (setuid(uid))
-		err(EXIT_FAILURE, "setuid to user");
-	if (setgid(pw->pw_gid))
-		err(EXIT_FAILURE, "setgid");
+	set_user(pw, groups, n_groups);
 
 	/* FIXME: Setup restricted environment. */
 	execvp(cmd, args);
