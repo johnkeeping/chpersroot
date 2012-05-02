@@ -1,7 +1,5 @@
 * Set up environment properly
-* Use shell from pw->pw_shell
 * Syslog
-* Run command-line command via "/bin/sh -c"?
 
 
 FUTURE

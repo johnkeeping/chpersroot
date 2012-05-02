@@ -1,13 +1,15 @@
 /*
- * Define _GNU_SOURCE so we get syscall().
+ * Define _GNU_SOURCE so we get syscall(2).
  */
 #define _GNU_SOURCE
 
 #include <err.h>
 #include <errno.h>
 #include <grp.h>
+#include <libgen.h>
 #include <linux/personality.h>
 #include <pwd.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,6 +21,9 @@
 
 #ifndef ROOT_DIR
 #	error "You must define ROOT_DIR to compile this file"
+#endif
+#ifndef SHELL_PATH
+#	define SHELL_PATH	"/bin/sh"
 #endif
 
 
@@ -54,13 +59,83 @@ set_user(struct passwd* pw, gid_t* groups, int n_groups)
 		err(EXIT_FAILURE, "setgid");
 }
 
+static inline int
+need_sh_quote(char c)
+{
+	return (c == '\'' || c == '!');
+}
+
+static inline void
+check_length(ptrdiff_t remaining, size_t needed)
+{
+	if (remaining < needed)
+		errx(EXIT_FAILURE, "command line too long");
+}
+
+static char*
+cmd_string(int argc, char* argv[])
+{
+	const size_t maxlen = (size_t) sysconf(_SC_ARG_MAX);
+	char* cmd = xmalloc(maxlen);
+	char* end = cmd + maxlen;
+	char* p;
+
+	for (p = cmd; argc > 0; --argc) {
+		const char* src = *argv++;
+		check_length(end - p, 2);
+		if (p != cmd)
+			*p++ = ' ';
+		*p++ = '\'';
+		while (*src) {
+			size_t len = strcspn(src, "'!");
+			check_length(end - p, len);
+			strncpy(p, src, len);
+			src += len;
+			p += len;
+			while (need_sh_quote(*src)) {
+				check_length(end - p, 4);
+				*p++ = '\'';
+				*p++ = '\\';
+				*p++ = *src++;
+				*p++ = '\'';
+			}
+		}
+		check_length(end - p, 2);
+		*p++ = '\'';
+	}
+	*p = '\0';
+	return cmd;
+}
+
+static inline const char*
+xbasename(const char* path)
+{
+	const char* ret = strrchr(path, '/');
+	if (!ret)
+		ret = path;
+	else
+		++ret;
+	return ret;
+}
+
+static char*
+login_arg0(const char* arg0)
+{
+	const char* base = xbasename(arg0);
+	const size_t len = strlen(base);
+	char* ret = xmalloc(len + 2);
+	ret[0] = '-';
+	strncpy(ret + 1, base, len);
+	return ret;
+}
+
 int
 main(int argc, char* argv[])
 {
 	uid_t uid = getuid();
 	struct passwd* pw;
 	char* cmd;
-	char** args;
+	char* args[4];
 	gid_t* groups;
 	int n_groups;
 
@@ -72,18 +147,23 @@ main(int argc, char* argv[])
 	if (!getgroups(n_groups, groups))
 		err(EXIT_FAILURE, "getgroups");
 
+	cmd = pw->pw_shell;
+	if (!cmd)
+		cmd = SHELL_PATH;
+
+	args[0] = login_arg0(cmd);
 	if (argc > 1) {
-		args = xmalloc(argc * sizeof(char*));
-		memcpy(args, argv + 1, sizeof(char*) * (argc - 1));
-		args[argc - 1] = NULL;
-		/* TODO: Use "/bin/sh -c"? */
-		cmd = args[0];
+		args[1] = "-c";
+		args[2] = cmd_string(argc - 1, argv + 1);
+		args[3] = NULL;
 	} else {
-		args = xmalloc(2 * sizeof(char*));
-		/* FIXME: Use shell from pw. */
-		cmd = "/bin/bash";
-		args[0] = "-bash";
 		args[1] = NULL;
+		/*
+		 * Store the command (shell) in args[2] so that we can log
+		 * this value regardless of which path is used to set up the
+		 * argument array.
+		 */
+		args[2] = cmd;
 	}
 
 	if (set_pers(PER_LINUX32))
