@@ -28,6 +28,20 @@
 #endif
 
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+
+static const char *const ENV_TO_KEEP[] = {
+	"TERM",
+	"COLORTERM",
+	"DISPLAY",
+	"XAUTHORITY",
+	NULL
+};
+static const char ENV_SUPATH[] = "/sbin:/bin:/usr/sbin:/usr/bin";
+static const char ENV_PATH[] = "/bin:/usr/bin";
+
+
 static inline void*
 xmalloc(size_t size)
 {
@@ -130,6 +144,41 @@ login_arg0(const char* arg0)
 	return ret;
 }
 
+static inline char*
+make_env_var(const char* name, const char* value)
+{
+	size_t len = strlen(name) + strlen(value) + 2;
+	char *ret = xmalloc(len);
+	if (len != 1 + snprintf(ret, len, "%s=%s", name, value))
+		errx(EXIT_FAILURE, "failed to copy environment");
+	return ret;
+}
+
+static char**
+make_env(int system_path)
+{
+	/*
+	 * Add one to size of ENV_TO_KEEP to include $PATH (note that
+	 * ENV_TO_KEEP includes a null terminator.
+	 */
+	char** envp = xmalloc(sizeof(char*) * (ARRAY_SIZE(ENV_TO_KEEP) + 1));
+	char** next_slot = envp;
+	const char *const * to_keep;
+
+	for (to_keep = ENV_TO_KEEP; *to_keep; ++to_keep) {
+		const char* value = getenv(*to_keep);
+		if (!value)
+			continue;
+		*next_slot++ = make_env_var(*to_keep, value);
+	}
+
+	*next_slot++ = make_env_var("PATH",
+			system_path ? ENV_SUPATH : ENV_PATH);
+	*next_slot = NULL;
+
+	return envp;
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -139,6 +188,7 @@ main(int argc, char* argv[])
 	char* args[4];
 	gid_t* groups;
 	int n_groups;
+	char** envp;
 
 	pw = getpwuid(uid);
 	if (!pw)
@@ -181,14 +231,15 @@ main(int argc, char* argv[])
 	switch_root(ROOT_DIR, pw->pw_dir);
 	set_user(pw, groups, n_groups);
 
-	/* FIXME: Setup restricted environment. */
+	/* Setup restricted environment. */
+	envp = make_env(pw->pw_uid == 0);
 
 	syslog(LOG_NOTICE,
 		"[chpersroot user=\"%s\" command=\"%s\" root=\"%s\"]",
 		pw->pw_name, args[2], ROOT_DIR);
 	closelog();
 
-	execv(cmd, args);
+	execve(cmd, args, envp);
 
 	/*
 	 * We only get here if exec fails.
