@@ -188,7 +188,7 @@ main(int argc, char* argv[])
 		pw->pw_name, args[2], ROOT_DIR);
 	closelog();
 
-	execvp(cmd, args);
+	execv(cmd, args);
 
 	/*
 	 * We only get here if exec fails.
