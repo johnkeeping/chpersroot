@@ -126,7 +126,7 @@ login_arg0(const char* arg0)
 	const size_t len = strlen(base);
 	char* ret = xmalloc(len + 2);
 	ret[0] = '-';
-	strncpy(ret + 1, base, len);
+	strncpy(ret + 1, base, len + 1);
 	return ret;
 }
 
