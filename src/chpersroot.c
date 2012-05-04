@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #define set_pers(pers) ((long) syscall(SYS_personality, pers))
@@ -170,10 +171,23 @@ main(int argc, char* argv[])
 		err(EXIT_FAILURE, "set_pers");
 	if (setuid(0))
 		err(EXIT_FAILURE, "setuid to root");
+
+	/*
+	 * Open the system log before we switch into the new root so that we
+	 * are writing to the host's log.
+	 */
+	openlog(argv[0], LOG_NDELAY, LOG_AUTHPRIV);
+
 	switch_root(ROOT_DIR, pw->pw_dir);
 	set_user(pw, groups, n_groups);
 
 	/* FIXME: Setup restricted environment. */
+
+	syslog(LOG_NOTICE,
+		"[chpersroot user=\"%s\" command=\"%s\" root=\"%s\"]",
+		pw->pw_name, args[2], ROOT_DIR);
+	closelog();
+
 	execvp(cmd, args);
 
 	/*
