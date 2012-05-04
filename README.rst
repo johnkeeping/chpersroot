@@ -9,7 +9,7 @@ Basically, this program is equivalent to running::
     sudo linux32 chroot /path/to/my/chroot su -l "$USER" [args]
 
 but because it's installed setuid you don't need to type a password and the
-command line is somewhat shorted because the location of the chroot is
+command line is somewhat shorter because the location of the chroot is
 compiled in at build time.
 
 
