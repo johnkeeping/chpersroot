@@ -18,6 +18,8 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "copyfile.h"
+
 #define set_pers(pers) ((long) syscall(SYS_personality, pers))
 
 #ifndef ROOT_DIR
@@ -25,6 +27,9 @@
 #endif
 #ifndef SHELL_PATH
 #	define SHELL_PATH	"/bin/sh"
+#endif
+#ifndef COPY_IN
+#	define COPY_IN
 #endif
 
 
@@ -40,6 +45,12 @@ static const char *const ENV_TO_KEEP[] = {
 };
 static const char ENV_SUPATH[] = "/sbin:/bin:/usr/sbin:/usr/bin";
 static const char ENV_PATH[] = "/bin:/usr/bin";
+
+
+static const char *const COPY_IN_FILES[] = {
+	COPY_IN
+	NULL
+};
 
 
 static inline void*
@@ -179,6 +190,21 @@ make_env(int system_path)
 	return envp;
 }
 
+static void
+copy_in_files(void)
+{
+	size_t rootlen = strlen(ROOT_DIR);
+	const char *const *file;
+	for (file = COPY_IN_FILES; *file; ++file) {
+		size_t len = strlen(*file) + rootlen + 1;
+		char *dstpath = xmalloc(len);
+		snprintf(dstpath, len, "%s%s", ROOT_DIR, *file);
+		if (copyfile(*file, dstpath))
+			err(EXIT_FAILURE, "copyfile");
+		free(dstpath);
+	}
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -221,6 +247,8 @@ main(int argc, char* argv[])
 		err(EXIT_FAILURE, "set_pers");
 	if (setuid(0))
 		err(EXIT_FAILURE, "setuid to root");
+
+	copy_in_files();
 
 	/*
 	 * Open the system log before we switch into the new root so that we

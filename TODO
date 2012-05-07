@@ -1,6 +1,5 @@
 FUTURE
 ======
 
-* Copy useful files in on start? (e.g. /etc/resolv.conf)
 * Configuration from file
 * Command-line arguments

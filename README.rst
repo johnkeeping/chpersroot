@@ -27,3 +27,21 @@ Setup your configuration::
 then build::
 
     make && sudo make install
+
+
+Configuration
+-------------
+
+Currently all configuration is performed at build time via the ``config.mak``
+file.  The available variables are:
+
+``PROG_NAME``
+    The name of the executable program to build.
+``ROOT_DIR``
+    The root directory of your chroot.
+``COPY_IN``
+    The absolute path of a file to be copied into the chroot when the program
+    is run.  For example, this can be set to ``/etc/resolv.conf`` to update
+    the chroot environments nameserver settings whenever you enter it.
+``prefix``
+    The installation prefix.
