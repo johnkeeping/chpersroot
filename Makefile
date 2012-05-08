@@ -5,19 +5,11 @@ prefix=/usr/local
 
 -include config.mak
 
-ifndef PROG_NAME
-$(error you must set PROG_NAME in config.mak)
-endif
-ifndef ROOT_DIR
-$(error you must set ROOT_DIR in config.mak)
-endif
 CFLAGS+= -Isrc
 
 ifndef bindir
 bindir=$(prefix)/bin
 endif
-
-CFLAGS+=-DROOT_DIR=\"$(ROOT_DIR)\" -DCOPY_IN=\"$(COPY_IN)\",
 
 .PHONY: all clean install check
 
@@ -27,13 +19,14 @@ clean:
 	$(RM) chpersroot src/*.o
 
 install: chpersroot
-	$(INSTALL) -m 6755 -o root -T chpersroot $(bindir)/$(PROG_NAME)
+	$(INSTALL) -m 6755 -o root chpersroot $(bindir)
 
+src/configfile.o: src/configfile.c src/configfile.h src/iniparser.h
 src/copyfile.o: src/copyfile.c src/copyfile.h
 src/chpersroot.o: src/chpersroot.c src/copyfile.h
 src/iniparser.o: src/iniparser.c src/iniparser.h
 
-chpersroot: src/chpersroot.o src/copyfile.o
+chpersroot: src/chpersroot.o src/copyfile.o src/configfile.o src/iniparser.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 test/initest: src/iniparser.o test/initest.o

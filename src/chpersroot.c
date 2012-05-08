@@ -5,6 +5,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <grp.h>
 #include <libgen.h>
 #include <linux/personality.h>
@@ -13,20 +14,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
 
+#include "configfile.h"
 #include "copyfile.h"
 
 #define set_pers(pers) ((long) syscall(SYS_personality, pers))
 
-#ifndef ROOT_DIR
-#	error "You must define ROOT_DIR to compile this file"
-#endif
 #ifndef SHELL_PATH
 #	define SHELL_PATH	"/bin/sh"
+#endif
+#ifndef CONFIG_PATH
+#	define CONFIG_PATH	"/etc/chpersroot.conf"
 #endif
 #ifndef COPY_IN
 #	define COPY_IN
@@ -190,16 +193,44 @@ make_env(int system_path)
 	return envp;
 }
 
-static void
-copy_in_files(void)
+static struct config_entry*
+read_configuration(void)
 {
-	size_t rootlen = strlen(ROOT_DIR);
-	const char *const *file;
-	for (file = COPY_IN_FILES; *file; ++file) {
-		size_t len = strlen(*file) + rootlen + 1;
+	struct stat statbuf;
+	struct config_entry* entry;
+	int fd = open(CONFIG_PATH, O_RDONLY);
+	if (fd < 0) {
+		if (errno == ENOENT)
+			return NULL;
+		err(EXIT_FAILURE, "read_configuration");
+	}
+
+	if (fstat(fd, &statbuf))
+		err(EXIT_FAILURE, "stat");
+
+	if (0 != statbuf.st_uid || 0 != statbuf.st_gid)
+		errx(EXIT_FAILURE, "config file must be owned by root");
+
+	if (S_IWGRP & statbuf.st_mode || S_IWOTH & statbuf.st_mode)
+		errx(EXIT_FAILURE, "config file must not be world writable");
+
+	if (parse_configfile(fd, &entry))
+		errx(EXIT_FAILURE, "failed to parse config file");
+
+	close(fd);
+	return entry;
+}
+
+static void
+copy_in_files(const char* rootdir, struct file_list* files)
+{
+	size_t rootlen = strlen(rootdir);
+	struct file_list* entry;
+	for (entry = files; entry; entry = entry->next) {
+		size_t len = strlen(entry->file) + rootlen + 1;
 		char *dstpath = xmalloc(len);
-		snprintf(dstpath, len, "%s%s", ROOT_DIR, *file);
-		if (copyfile(*file, dstpath))
+		snprintf(dstpath, len, "%s%s", rootdir, entry->file);
+		if (copyfile(entry->file, dstpath))
 			err(EXIT_FAILURE, "copyfile");
 		free(dstpath);
 	}
@@ -210,11 +241,13 @@ main(int argc, char* argv[])
 {
 	uid_t uid = getuid();
 	struct passwd* pw;
+	const char* target_config;
 	char* cmd;
 	char* args[4];
 	gid_t* groups;
 	int n_groups;
 	char** envp;
+	struct config_entry* config;
 
 	pw = getpwuid(uid);
 	if (!pw)
@@ -243,12 +276,27 @@ main(int argc, char* argv[])
 		args[2] = cmd;
 	}
 
+	target_config = xbasename(argv[0]);
+
+	config = read_configuration();
+	while (config) {
+		if (!strcasecmp(target_config, config->name))
+			break;
+		config = config->next;
+	}
+
+	if (!config)
+		errx(EXIT_FAILURE, "no such configuration: %s", target_config);
+	if (!config->rootdir)
+		errx(EXIT_FAILURE, "no root directory for configuration: %s",
+			target_config);
+
 	if (set_pers(PER_LINUX32))
 		err(EXIT_FAILURE, "set_pers");
 	if (setuid(0))
 		err(EXIT_FAILURE, "setuid to root");
 
-	copy_in_files();
+	copy_in_files(config->rootdir, config->files_to_copy);
 
 	/*
 	 * Open the system log before we switch into the new root so that we
@@ -256,7 +304,7 @@ main(int argc, char* argv[])
 	 */
 	openlog(argv[0], LOG_NDELAY, LOG_AUTHPRIV);
 
-	switch_root(ROOT_DIR, pw->pw_dir);
+	switch_root(config->rootdir, pw->pw_dir);
 	set_user(pw, groups, n_groups);
 
 	/* Setup restricted environment. */
@@ -264,7 +312,7 @@ main(int argc, char* argv[])
 
 	syslog(LOG_NOTICE,
 		"[chpersroot user=\"%s\" command=\"%s\" root=\"%s\"]",
-		pw->pw_name, args[2], ROOT_DIR);
+		pw->pw_name, args[2], config->rootdir);
 	closelog();
 
 	execve(cmd, args, envp);

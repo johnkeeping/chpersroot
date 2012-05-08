@@ -16,11 +16,9 @@ compiled in at build time.
 Build Instructions
 ------------------
 
-Setup your configuration::
+Setup your configuration if you want to::
 
     cat >config.mak <<\EOF
-    PROG_NAME=mychpersroot
-    ROOT_DIR=/path/to/my/chroot
     prefix=/usr/local
     EOF
 
@@ -32,16 +30,31 @@ then build::
 Configuration
 -------------
 
-Currently all configuration is performed at build time via the ``config.mak``
-file.  The available variables are:
+The configuration file ``/etc/chpersroot.conf`` is read to determine how to
+enter a chroot.  This file is in INI format, although certain keys can be
+multi-valued.
 
-``PROG_NAME``
-    The name of the executable program to build.
-``ROOT_DIR``
-    The root directory of your chroot.
-``COPY_IN``
-    The absolute path of a file to be copied into the chroot when the program
-    is run.  For example, this can be set to ``/etc/resolv.conf`` to update
-    the chroot environments nameserver settings whenever you enter it.
-``prefix``
-    The installation prefix.
+An example file might be::
+
+    [gentoo32]
+        rootdir = /gentoo32
+        copyfile = /etc/resolv.conf
+
+The configuration to use is chosen by the basename of argument zero, in other
+words it is the filename by which the program is invoked.  If you only have a
+single configuration and don't want to worry about this, just call the
+configuration ``chpersroot``, otherwise you should create a symbolic link
+somewhere in your path that links from your configuration's name to the
+``chpersroot`` executable.
+
+
+Configuration Keys
+~~~~~~~~~~~~~~~~~~
+
+The following configuration keys are available:
+
+``rootdir``
+    The path to the new root.
+``copyfile``
+    A file to be copied into the new root.  This key may be specified multiple
+    times if you want to copy multiple files.

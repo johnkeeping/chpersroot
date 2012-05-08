@@ -1,5 +1,6 @@
+* Allow configuration of personality in config file
+
 FUTURE
 ======
 
-* Configuration from file
 * Command-line arguments
