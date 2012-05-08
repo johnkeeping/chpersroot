@@ -11,6 +11,7 @@ endif
 ifndef ROOT_DIR
 $(error you must set ROOT_DIR in config.mak)
 endif
+CFLAGS+= -Isrc
 
 ifndef bindir
 bindir=$(prefix)/bin
@@ -18,7 +19,7 @@ endif
 
 CFLAGS+=-DROOT_DIR=\"$(ROOT_DIR)\" -DCOPY_IN=\"$(COPY_IN)\",
 
-.PHONY: all clean install
+.PHONY: all clean install check
 
 all: chpersroot
 
@@ -30,6 +31,13 @@ install: chpersroot
 
 src/copyfile.o: src/copyfile.c src/copyfile.h
 src/chpersroot.o: src/chpersroot.c src/copyfile.h
+src/iniparser.o: src/iniparser.c src/iniparser.h
 
 chpersroot: src/chpersroot.o src/copyfile.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+test/initest: src/iniparser.o test/initest.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+check: test/initest
+	@$(SH) test/t-iniparser.sh

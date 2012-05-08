@@ -2,3 +2,4 @@ config.mak
 
 *.o
 chpersroot
+test/initest
