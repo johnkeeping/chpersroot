@@ -9,6 +9,7 @@ struct file_list {
 struct config_entry {
 	char* name;
 	char* rootdir;
+	unsigned int personality;
 	struct file_list* files_to_copy;
 	struct config_entry* next;
 };

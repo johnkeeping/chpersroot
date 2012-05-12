@@ -291,7 +291,7 @@ main(int argc, char* argv[])
 		errx(EXIT_FAILURE, "no root directory for configuration: %s",
 			target_config);
 
-	if (set_pers(PER_LINUX32))
+	if (-1 != config->personality && set_pers(config->personality))
 		err(EXIT_FAILURE, "set_pers");
 	if (setuid(0))
 		err(EXIT_FAILURE, "setuid to root");

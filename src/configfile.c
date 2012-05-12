@@ -1,8 +1,10 @@
 #include "configfile.h"
 #include "iniparser.h"
 
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/personality.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +12,38 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+
+struct personality {
+	const char *const name;
+	const int value;
+};
+
+static struct personality PERSONALITIES[] = {
+	{ "linux", PER_LINUX },
+	{ "linux-32bit", PER_LINUX_32BIT },
+	{ "linux-fdpic", PER_LINUX_FDPIC },
+	{ "svr4", PER_SVR4 },
+	{ "svr3", PER_SVR3 },
+	{ "scosvr3", PER_SCOSVR3 },
+	{ "osr5", PER_OSR5 },
+	{ "wysev386", PER_WYSEV386 },
+	{ "iscr4", PER_ISCR4 },
+	{ "bsd", PER_BSD },
+	{ "sunos", PER_SUNOS },
+	{ "xenix", PER_XENIX },
+	{ "linux32", PER_LINUX32 },
+	{ "linux32-3gb", PER_LINUX32_3GB },
+	{ "irix32", PER_IRIX32 },
+	{ "irixn32", PER_IRIXN32 },
+	{ "irix64", PER_IRIX64 },
+	{ "riscos", PER_RISCOS },
+	{ "solaris", PER_SOLARIS },
+	{ "uw7", PER_UW7 },
+	{ "osf4", PER_OSF4 },
+	{ "hpux", PER_HPUX },
+	{ NULL, -1 }
+};
 
 
 #define BUFFER_SIZE	4096 - 2 * sizeof(struct config_entry*) \
@@ -61,6 +95,7 @@ config_begin_section(void* data, const char* section_name)
 	}
 
 	entry->name = strdup(section_name);
+	entry->personality = -1;
 	if (!entry->name)
 		return -1;
 
@@ -71,6 +106,17 @@ config_begin_section(void* data, const char* section_name)
 
 	state->current_entry = entry;
 	return 0;
+}
+
+static int
+parse_personality(const char* value)
+{
+	struct personality* pers;
+	for (pers = PERSONALITIES; pers->name; ++pers)
+		if (!strcasecmp(pers->name, value))
+			return pers->value;
+
+	errx(EXIT_FAILURE, "unknown personality: %s", value);
 }
 
 static int
@@ -85,6 +131,10 @@ config_value_pair(void* data, const char* key, const char* value)
 	if (!strcasecmp(key, "rootdir")) {
 		entry->rootdir = strdup(value);
 		if (!entry->rootdir)
+			return -1;
+	} else if (!strcasecmp(key, "personality")) {
+		entry->personality = parse_personality(value);
+		if (-1 == entry->personality)
 			return -1;
 	} else if (!strcasecmp(key, "copyfile")) {
 		struct file_list* fl = calloc(1, sizeof(struct file_list));

@@ -39,6 +39,7 @@ An example file might be::
     [gentoo32]
         rootdir = /gentoo32
         copyfile = /etc/resolv.conf
+        personality = linux32
 
 The configuration to use is chosen by the basename of argument zero, in other
 words it is the filename by which the program is invoked.  If you only have a
@@ -58,3 +59,7 @@ The following configuration keys are available:
 ``copyfile``
     A file to be copied into the new root.  This key may be specified multiple
     times if you want to copy multiple files.
+``personality``
+    The personality for the chroot.  This is one of the ``PER_`` variables
+    from ``/usr/include/linux/personality.h`` with the prefix removed and
+    underscores converted to hyphens; the comparison is case insensitive.
