@@ -74,7 +74,7 @@ switch_root(const char* root, const char* dir)
 	if (chdir("/"))
 		err(EXIT_FAILURE, "chdir to /");
 	if (chdir(dir))
-		err(EXIT_FAILURE, "chdir to home");
+		err(EXIT_FAILURE, "chdir to home (%s)", dir);
 }
 
 static void
