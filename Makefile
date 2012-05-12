@@ -19,7 +19,7 @@ clean:
 	$(RM) chpersroot src/*.o
 
 install: chpersroot
-	$(INSTALL) -m 6755 -o root chpersroot $(bindir)
+	$(INSTALL) -m 4755 -o root chpersroot $(bindir)
 
 src/configfile.o: src/configfile.c src/configfile.h src/iniparser.h
 src/copyfile.o: src/copyfile.c src/copyfile.h
