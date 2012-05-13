@@ -49,6 +49,17 @@ static const char *const ENV_TO_KEEP[] = {
 static const char ENV_SUPATH[] = "/sbin:/bin:/usr/sbin:/usr/bin";
 static const char ENV_PATH[] = "/bin:/usr/bin";
 
+struct pw_env {
+	const char name[8];
+	const size_t offset;
+};
+static const struct pw_env ENV_FROM_PASSWD[] = {
+	{ "HOME", offsetof(struct passwd, pw_dir) },
+	{ "SHELL", offsetof(struct passwd, pw_shell) },
+	{ "USER", offsetof(struct passwd, pw_name) },
+	{ "LOGNAME", offsetof(struct passwd, pw_name) },
+	{ "", -1 }
+};
 
 static const char *const COPY_IN_FILES[] = {
 	COPY_IN
@@ -168,16 +179,31 @@ make_env_var(const char* name, const char* value)
 	return ret;
 }
 
+static inline const char*
+pw_at_offset(const struct passwd* pw, size_t offset)
+{
+	return *(const char**) ((const char*) pw + offset);
+}
+
 static char**
-make_env(int system_path)
+make_env(const struct passwd* pw)
 {
 	/*
-	 * Add one to size of ENV_TO_KEEP to include $PATH (note that
-	 * ENV_TO_KEEP includes a null terminator.
+	 * Add one to size of ENV_TO_KEEP and ENV_FROM_PASSWD to include
+	 * $PATH (note that ENV_TO_KEEP includes a null terminator).
 	 */
-	char** envp = xmalloc(sizeof(char*) * (ARRAY_SIZE(ENV_TO_KEEP) + 1));
+	char** envp = xmalloc(sizeof(char*) * (ARRAY_SIZE(ENV_TO_KEEP)
+					+ ARRAY_SIZE(ENV_FROM_PASSWD) + 1));
 	char** next_slot = envp;
 	const char *const * to_keep;
+	const struct pw_env* from_pw;
+
+	*next_slot++ = make_env_var("PATH",
+			pw->pw_uid ? ENV_PATH : ENV_SUPATH);
+
+	for (from_pw = ENV_FROM_PASSWD; *from_pw->name; ++from_pw)
+		*next_slot++ = make_env_var(from_pw->name,
+				pw_at_offset(pw, from_pw->offset));
 
 	for (to_keep = ENV_TO_KEEP; *to_keep; ++to_keep) {
 		const char* value = getenv(*to_keep);
@@ -186,10 +212,7 @@ make_env(int system_path)
 		*next_slot++ = make_env_var(*to_keep, value);
 	}
 
-	*next_slot++ = make_env_var("PATH",
-			system_path ? ENV_SUPATH : ENV_PATH);
 	*next_slot = NULL;
-
 	return envp;
 }
 
@@ -308,7 +331,7 @@ main(int argc, char* argv[])
 	set_user(pw, groups, n_groups);
 
 	/* Setup restricted environment. */
-	envp = make_env(pw->pw_uid == 0);
+	envp = make_env(pw);
 
 	syslog(LOG_NOTICE,
 		"[chpersroot user=\"%s\" command=\"%s\" root=\"%s\"]",
