@@ -31,6 +31,12 @@
 #ifndef CONFIG_PATH
 #	define CONFIG_PATH	"/etc/chpersroot.conf"
 #endif
+#ifndef ENV_PATH
+#	define ENV_PATH		"/bin:/usr/bin"
+#endif
+#ifndef ENV_SUPATH
+#	define ENV_SUPATH	"/sbin:/bin:/usr/sbin:/usr/bin";
+#endif
 
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -43,8 +49,6 @@ static const char *const ENV_TO_KEEP[] = {
 	"XAUTHORITY",
 	NULL
 };
-static const char ENV_SUPATH[] = "/sbin:/bin:/usr/sbin:/usr/bin";
-static const char ENV_PATH[] = "/bin:/usr/bin";
 
 struct pw_env {
 	const char name[8];

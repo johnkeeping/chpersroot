@@ -1,3 +1,7 @@
+ENV_PATH=/bin:/usr/bin
+ENV_SUPATH=/sbin:/bin:/usr/sbin:/usr/bin
+CONFIG_PATH=/etc/chpersroot.conf
+
 CFLAGS=-g -O2 -Wall
 INSTALL=/usr/bin/install
 
@@ -6,6 +10,10 @@ prefix=/usr/local
 -include config.mak
 
 CFLAGS+= -Isrc
+
+CFLAGS+= -DENV_PATH=\"$(ENV_PATH)\"
+CFLAGS+= -DENV_SUPATH=\"$(ENV_SUPATH)\"
+CFLAGS+= -DCONFIG_PATH=\"$(CONFIG_PATH)\"
 
 ifndef bindir
 bindir=$(prefix)/bin
