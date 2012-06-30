@@ -18,6 +18,12 @@ CFLAGS+= -DCONFIG_PATH=\"$(CONFIG_PATH)\"
 ifndef bindir
 bindir=$(prefix)/bin
 endif
+ifndef sharedir
+etcdir=$(prefix)/share
+endif
+ifndef bashcompletiondir
+bashcompletiondir=$(etcdir)/bash_completion.d
+endif
 
 .PHONY: all clean install check
 
@@ -26,8 +32,16 @@ all: chpersroot
 clean:
 	$(RM) chpersroot src/*.o
 
-install: chpersroot
+install: chpersroot chpersroot-completion
 	$(INSTALL) -m 4755 -o root chpersroot $(bindir)
+	$(INSTALL) -m 644 -T chpersroot-completion $(bashcompletiondir)/chpersroot
+
+chpersroot-completion: chpersroot-completion.bash
+	sed -e "s|@@ENV_PATH@@|$(ENV_PATH)|g" \
+		-e "s|@@ENV_SUPATH@@|$(ENV_SUPATH)|g" \
+		-e "s|@@CONFIG_PATH@@|$(CONFIG_PATH)|g" \
+		$^ >$@+ && \
+	mv $@+ $@
 
 src/configfile.o: src/configfile.c src/configfile.h src/iniparser.h
 src/copyfile.o: src/copyfile.c src/copyfile.h

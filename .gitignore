@@ -2,4 +2,6 @@ config.mak
 
 *.o
 chpersroot
+chpersroot-completion
+chpersroot-completion+
 test/initest
