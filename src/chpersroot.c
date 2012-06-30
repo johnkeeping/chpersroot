@@ -31,9 +31,6 @@
 #ifndef CONFIG_PATH
 #	define CONFIG_PATH	"/etc/chpersroot.conf"
 #endif
-#ifndef COPY_IN
-#	define COPY_IN
-#endif
 
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -59,11 +56,6 @@ static const struct pw_env ENV_FROM_PASSWD[] = {
 	{ "USER", offsetof(struct passwd, pw_name) },
 	{ "LOGNAME", offsetof(struct passwd, pw_name) },
 	{ "", -1 }
-};
-
-static const char *const COPY_IN_FILES[] = {
-	COPY_IN
-	NULL
 };
 
 
