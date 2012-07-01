@@ -178,7 +178,7 @@ __chpersroot_compopt() {
             shift
             opt=$1
             case "$opt" in
-            dirnames|plusdirs)
+            dirnames|plusdirs|nospace)
                 __chpersroot_compopt_set $arg "$opt"
                 ;;
             *)
@@ -291,6 +291,16 @@ __chpersroot_complete_args() {
     fi
     builtin compopt +o filenames +o default
     __chpersroot_process_compopts
+    if [ ${#COMPREPLY[@]} = 1 ]; then
+        case " $__chpersroot_compopts " in
+            *' nospace '*)
+                ;;
+            *)
+                [ "${COMPREPLY[0]%/}" = "${COMPREPLY[0]}" ] &&
+                builtin compopt +o nospace
+                ;;
+        esac
+    fi
     unset compgen compopt
 }
 
