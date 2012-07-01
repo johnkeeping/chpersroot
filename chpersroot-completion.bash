@@ -50,22 +50,6 @@ __chpersroot_process_path() {
 }
 
 
-# Completes a command using the path inside the chroot.
-#
-__chpersroot_complete_command() {
-    local newpath cur
-    if _complete_as_root; then
-        newpath=$(__chpersroot_process_path "@@ENV_SUPATH@@")
-    else
-        newpath=$(__chpersroot_process_path "@@ENV_PATH@@")
-    fi
-
-    local PATH=$newpath
-    _get_comp_words_by_ref cur
-    COMPREPLY=( $(compgen -c -- "$cur") )
-}
-
-
 # Filter for processing file/directory names returned by compgen and removing
 # a prefix from all paths.  Additionally a trailing slash is added to
 # directory names which do not already have one.
@@ -79,6 +63,21 @@ __chpersroot_filedir() {
         [ -d "$dir" -a "${dir%/}" = "$dir" ] && dir=$dir/
         echo "${dir##$prefix}"
     done
+}
+
+
+# Filter for processing file/directory names returned by "compgen -f" and
+# removing any entries that are neither a directory nor executable.  This
+# filter also performs the same processing as __chpersroot_filedir.
+#
+# @param $1  The prefix to pass to __chpersroot_filedir
+#
+__chpersroot_execfiles() {
+    local f prefix
+    prefix=$1
+    while read -r f; do
+        [ -x "$f" -o -d "$f" ] && echo "$f"
+    done | __chpersroot_filedir "$prefix"
 }
 
 
@@ -99,10 +98,16 @@ __chpersroot_compgen() {
             fi
             arg=$prefix$arg
         fi
-        args+=( "$arg" )
         case "$arg" in
-            -d|-f) filter=__chpersroot_filedir ;;
+            --chpersroot-exec)
+                arg=-f
+                filter=__chpersroot_execfiles
+                ;;
+            -d|-f)
+                filter=__chpersroot_filedir
+                ;;
         esac
+        args+=( "$arg" )
     done
     if [ -n "$filter" ]; then
         builtin compgen "${args[@]}" | $filter "$prefix"
@@ -193,6 +198,44 @@ __chpersroot_process_compopts() {
     local cur
     _get_comp_words_by_ref cur
     COMPREPLY=( "${COMPREPLY[@]}" $(compgen $arg -- "$cur") )
+}
+
+
+# Completes a command using the path inside the chroot.
+#
+__chpersroot_complete_path_command() {
+    if _complete_as_root; then
+        newpath=$(__chpersroot_process_path "@@ENV_SUPATH@@")
+    else
+        newpath=$(__chpersroot_process_path "@@ENV_PATH@@")
+    fi
+
+    local PATH=$newpath
+    COMPREPLY=( $(compgen -c -- "$cur") )
+}
+
+
+# Completes a command inside the chroot.
+#
+__chpersroot_complete_command() {
+    local newpath cur
+    _get_comp_words_by_ref cur
+
+    case "$cur" in
+    */*)
+        builtin compopt +o filenames +o default -o nospace
+        COMPREPLY=( $(__chpersroot_compgen --chpersroot-exec "$cur") )
+        if [ ${#COMPREPLY[@]} = 1 ]; then
+            # If there is only a single completion option and it does not end
+            # with a slash, append a space to it, since we instruct readline
+            # not to do this.
+            [ "${COMPREPLY[0]%/}" = "${COMPREPLY[0]}" ] && COMPREPLY[0]+=' '
+        fi
+        ;;
+    *)
+        __chpersroot_complete_path_command
+        ;;
+    esac
 }
 
 
