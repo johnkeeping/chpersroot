@@ -35,6 +35,23 @@ __chpersroot_newroot() {
 }
 
 
+# Finds the home directory for the specified user within the chroot.
+#
+# @param $1  The UID of the target user.
+#
+__chpersroot_homedir() {
+    local userid IFS name password uid gid gecos directory shell
+    userid=$1
+    IFS=:
+    while read -r name password uid gid gecos directory shell; do
+        if [ "$uid" = "$userid" ]; then
+            echo "$directory"
+            break
+        fi
+    done <"$newroot/etc/passwd"
+}
+
+
 # Prepends $newroot to each element of a path.
 #
 # @param $1  The path to process.
@@ -86,13 +103,18 @@ __chpersroot_execfiles() {
 # the output in this case.
 #
 __chpersroot_compgen() {
-    local filter= args=() arg prefix
+    local filter= args=() arg prefix uid
     while test $# != 0; do
         arg=$1
         shift
         if test $# = 0 -a -n "$filter"; then
             if [ "${arg#/}" = "$arg" ]; then
-                prefix=$newroot$HOME/
+                if _complete_as_root; then
+                    uid=0
+                else
+                    uid=$EUID
+                fi
+                prefix="$newroot$(__chpersroot_homedir $uid)/"
             else
                 prefix=$newroot
             fi
