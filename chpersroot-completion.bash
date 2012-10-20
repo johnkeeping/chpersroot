@@ -67,6 +67,15 @@ __chpersroot_process_path() {
 }
 
 
+# Filter that escapes shell special characters.
+#
+__chpersroot_shell_escape() {
+    # Characters that are escaped:
+    # <space> <tab> $ * ? ! { } ( ) , ^ | < > # ` ; " '
+    sed -e 's/[ 	\$\*\?!{}(),\^|<>#`;"'"'"']/\\&/g'
+}
+
+
 # Filter for processing file/directory names returned by compgen and removing
 # a prefix from all paths.  Additionally a trailing slash is added to
 # directory names which do not already have one.
@@ -79,7 +88,7 @@ __chpersroot_filedir() {
     while read -r dir; do
         [ -d "$dir" -a "${dir%/}" = "$dir" ] && dir=$dir/
         echo "${dir##$prefix}"
-    done
+    done | __chpersroot_shell_escape
 }
 
 
