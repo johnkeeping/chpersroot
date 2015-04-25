@@ -96,8 +96,10 @@ config_begin_section(void* data, const char* section_name)
 
 	entry->name = strdup(section_name);
 	entry->personality = -1;
-	if (!entry->name)
+	if (!entry->name) {
+		free(entry);
 		return -1;
+	}
 
 	if (state->current_entry)
 		state->current_entry->next = entry;
@@ -143,8 +145,10 @@ config_value_pair(void* data, const char* key, const char* value)
 			return -1;
 		}
 		fl->file = strdup(value);
-		if (!fl->file)
+		if (!fl->file) {
+			free(fl);
 			return -1;
+		}
 		fl->next = entry->files_to_copy;
 		entry->files_to_copy = fl;
 	} else
