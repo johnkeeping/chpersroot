@@ -141,7 +141,7 @@ static inline int
 push_char(buffer* b, int c) {
 	if (b->len + 1 >= b->alloc) {
 		size_t newsize = b->alloc ? b->alloc * 2 : 32;
-		char* newptr = realloc(b->str, b->alloc);
+		char* newptr = realloc(b->str, newsize);
 		if (!newptr) {
 			errno = ENOMEM;
 			return -1;
