@@ -179,10 +179,10 @@ str(struct buffer* b)
 }
 
 static int
-iniparser_parse(iniparser* parser)
+iniparser_parse(iniparser* parser, struct buffer *section,
+		struct buffer *key, struct buffer *value)
 {
 	int c;
-	struct buffer section = BUFFER_INIT, key = BUFFER_INIT, value = BUFFER_INIT;
 	iniparser_callbacks* cb = parser->callbacks;
 	void* cbdata = parser->cbdata;
 
@@ -214,25 +214,25 @@ iniparser_parse(iniparser* parser)
 			else if (c == ';')
 				parser->state = STATE_CM;
 			else if (c == '[') {
-				clear(&section);
+				clear(section);
 				parser->state = STATE_SH;
 			} else {
-				clear(&key);
-				clear(&value);
-				if (push_char(&key, c))
+				clear(key);
+				clear(value);
+				if (push_char(key, c))
 					return parse_error(parser, "out of memory");
 				parser->state = STATE_EK;
 			}
 			break;
 		case STATE_SH:
 			if (c == ']') {
-				c = cb->begin_section(cbdata, str(&section));
+				c = cb->begin_section(cbdata, str(section));
 				if (c)
 					return c;
 				parser->state = STATE_LE;
 			} else if (c == '\n')
 				return parse_error(parser, "expected ']'");
-			else if (push_char(&section, c))
+			else if (push_char(section, c))
 				return parse_error(parser, "out of memory");
 			break;
 		case STATE_LE:
@@ -247,11 +247,11 @@ iniparser_parse(iniparser* parser)
 			break;
 		case STATE_EK:
 			if (c == '=') {
-				rstrip(&key);
+				rstrip(key);
 				parser->state = STATE_ES;
 			} else if (c == '\n')
 				return parse_error(parser, "expected value with key");
-			else if (push_char(&key, c))
+			else if (push_char(key, c))
 				return parse_error(parser, "out of memory");
 			break;
 		case STATE_ES:
@@ -262,7 +262,7 @@ iniparser_parse(iniparser* parser)
 			else if (c == '"')
 				parser->state = STATE_DQ;
 			else {
-				if (push_char(&value, c))
+				if (push_char(value, c))
 					return parse_error(parser, "out of memory");
 				parser->state = STATE_EV;
 			}
@@ -270,33 +270,33 @@ iniparser_parse(iniparser* parser)
 		case STATE_EV:
 			if (c == '\n' || c == ';') {
 				parser->state = c == ';' ? STATE_CM : STATE_LS;
-				rstrip(&value);
-				c = cb->value_pair(cbdata, str(&key), str(&value));
+				rstrip(value);
+				c = cb->value_pair(cbdata, str(key), str(value));
 				if (c)
 					return c;
-			} else if (push_char(&value, c))
+			} else if (push_char(value, c))
 				return parse_error(parser, "out of memory");
 			break;
 		case STATE_SQ:
 			if (c == '\'') {
-				c = cb->value_pair(cbdata, str(&key), str(&value));
+				c = cb->value_pair(cbdata, str(key), str(value));
 				if (c)
 					return c;
 				parser->state = STATE_LS;
 			} else if (c == '\n')
 				return parse_error(parser, "expected single quote");
-			else if (push_char(&value, c))
+			else if (push_char(value, c))
 				return parse_error(parser, "out of memory");
 			break;
 		case STATE_DQ:
 			if (c == '"') {
-				c = cb->value_pair(cbdata, str(&key), str(&value));
+				c = cb->value_pair(cbdata, str(key), str(value));
 				if (c)
 					return c;
 				parser->state = STATE_LS;
 			} else if (c == '\n')
 				return parse_error(parser, "expected single quote");
-			else if (push_char(&value, c))
+			else if (push_char(value, c))
 				return parse_error(parser, "out of memory");
 			break;
 		default:
@@ -330,7 +330,7 @@ iniparser_parse(iniparser* parser)
 	 * We got to EOF while parsing a value, fire the callback.
 	 */
 	case STATE_EV:
-		c = cb->value_pair(cbdata, str(&key), str(&value));
+		c = cb->value_pair(cbdata, str(key), str(value));
 		if (c)
 			return c;
 		break;
@@ -341,7 +341,9 @@ iniparser_parse(iniparser* parser)
 int
 iniparser_parsefd(iniparser* parser, int fd)
 {
+	struct buffer section = BUFFER_INIT, key = BUFFER_INIT, value = BUFFER_INIT;
 	int result;
+
 	assert(parser);
 	assert(parser->fd < 0);
 
@@ -349,7 +351,7 @@ iniparser_parsefd(iniparser* parser, int fd)
 	parser->pos = parser->buflen = 0;
 	parser->lineno = 1;
 
-	result = iniparser_parse(parser);
+	result = iniparser_parse(parser, &section, &key, &value);
 	parser->fd = -1;
 
 	return result;
