@@ -339,6 +339,5 @@ main(int argc, char* argv[])
 	/*
 	 * We only get here if exec fails.
 	 */
-	perror("failed to execute command");
-	return 1;
+	err(1, "failed to execute command");
 }
