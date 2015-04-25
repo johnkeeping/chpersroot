@@ -172,7 +172,7 @@ rstrip(struct buffer* b)
 }
 
 static inline const char*
-str(struct buffer* b)
+buf_str(struct buffer* b)
 {
 	b->str[b->len] = '\0';
 	return b->str;
@@ -233,7 +233,7 @@ iniparser_parse(iniparser* parser, struct buffer *section,
 			break;
 		case STATE_SH:
 			if (c == ']') {
-				c = cb->begin_section(cbdata, str(section));
+				c = cb->begin_section(cbdata, buf_str(section));
 				if (c)
 					return c;
 				parser->state = STATE_LE;
@@ -278,7 +278,7 @@ iniparser_parse(iniparser* parser, struct buffer *section,
 			if (c == '\n' || c == ';') {
 				parser->state = c == ';' ? STATE_CM : STATE_LS;
 				rstrip(value);
-				c = cb->value_pair(cbdata, str(key), str(value));
+				c = cb->value_pair(cbdata, buf_str(key), buf_str(value));
 				if (c)
 					return c;
 			} else if (push_char(value, c))
@@ -286,7 +286,7 @@ iniparser_parse(iniparser* parser, struct buffer *section,
 			break;
 		case STATE_SQ:
 			if (c == '\'') {
-				c = cb->value_pair(cbdata, str(key), str(value));
+				c = cb->value_pair(cbdata, buf_str(key), buf_str(value));
 				if (c)
 					return c;
 				parser->state = STATE_LS;
@@ -297,7 +297,7 @@ iniparser_parse(iniparser* parser, struct buffer *section,
 			break;
 		case STATE_DQ:
 			if (c == '"') {
-				c = cb->value_pair(cbdata, str(key), str(value));
+				c = cb->value_pair(cbdata, buf_str(key), buf_str(value));
 				if (c)
 					return c;
 				parser->state = STATE_LS;
@@ -337,7 +337,7 @@ iniparser_parse(iniparser* parser, struct buffer *section,
 	 * We got to EOF while parsing a value, fire the callback.
 	 */
 	case STATE_EV:
-		c = cb->value_pair(cbdata, str(key), str(value));
+		c = cb->value_pair(cbdata, buf_str(key), buf_str(value));
 		if (c)
 			return c;
 		break;
