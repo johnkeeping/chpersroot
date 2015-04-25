@@ -178,6 +178,13 @@ str(struct buffer* b)
 	return b->str;
 }
 
+static inline void
+buf_free(struct buffer *b)
+{
+	free(b->str);
+	b->alloc = 0;
+}
+
 static int
 iniparser_parse(iniparser* parser, struct buffer *section,
 		struct buffer *key, struct buffer *value)
@@ -354,5 +361,8 @@ iniparser_parsefd(iniparser* parser, int fd)
 	result = iniparser_parse(parser, &section, &key, &value);
 	parser->fd = -1;
 
+	buf_free(&section);
+	buf_free(&key);
+	buf_free(&value);
 	return result;
 }
