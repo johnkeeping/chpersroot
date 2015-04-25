@@ -166,21 +166,6 @@ static iniparser_callbacks config_callbacks = {
 	config_fatal_error
 };
 
-static inline void
-reverse_files_to_copy(struct config_entry* entry) {
-	while (entry) {
-		struct file_list* next = NULL;
-		struct file_list* cur = entry->files_to_copy;
-		while (cur) {
-			struct file_list* t = cur->next;
-			cur->next = next;
-			next = cur;
-			cur = t;
-		}
-		entry = entry->next;
-	}
-}
-
 int
 parse_configfile(int fd, struct config_entry** entries)
 {
