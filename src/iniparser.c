@@ -28,7 +28,7 @@ struct iniparser_state {
 	char buf[BUFFER_SIZE];
 };
 
-typedef enum {
+enum {
 	STATE_START,
 	STATE_START_CM, /* comment at start of file */
 	STATE_CM, /* comment */
@@ -42,7 +42,7 @@ typedef enum {
 	STATE_DQ, /* double quoted value */
 	STATE_EOF, /* end of file */
 	STATE_ERROR
-} parse_state;
+};
 
 iniparser*
 iniparser_alloc(iniparser_callbacks* callbacks, void* cbdata)
