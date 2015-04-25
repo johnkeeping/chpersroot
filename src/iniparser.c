@@ -130,15 +130,15 @@ nextchar(iniparser* parser)
 	return c;
 }
 
-typedef struct {
+struct buffer {
 	size_t alloc;
 	size_t len;
 	char* str;
-} buffer;
+};
 #define BUFFER_INIT { 0, 0, NULL }
 
 static inline int
-push_char(buffer* b, int c)
+push_char(struct buffer* b, int c)
 {
 	if (b->len + 1 >= b->alloc) {
 		size_t newsize = b->alloc ? b->alloc * 2 : 32;
@@ -155,13 +155,13 @@ push_char(buffer* b, int c)
 }
 
 static inline void
-clear(buffer* b)
+clear(struct buffer* b)
 {
 	b->len = 0;
 }
 
 static inline void
-rstrip(buffer* b)
+rstrip(struct buffer* b)
 {
 	while (b->len > 0) {
 		if (isspace(b->str[b->len - 1]))
@@ -172,7 +172,7 @@ rstrip(buffer* b)
 }
 
 static inline const char*
-str(buffer* b)
+str(struct buffer* b)
 {
 	b->str[b->len] = '\0';
 	return b->str;
@@ -182,7 +182,7 @@ static int
 iniparser_parse(iniparser* parser)
 {
 	int c;
-	buffer section = BUFFER_INIT, key = BUFFER_INIT, value = BUFFER_INIT;
+	struct buffer section = BUFFER_INIT, key = BUFFER_INIT, value = BUFFER_INIT;
 	iniparser_callbacks* cb = parser->callbacks;
 	void* cbdata = parser->cbdata;
 
