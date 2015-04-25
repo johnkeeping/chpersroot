@@ -138,7 +138,8 @@ typedef struct {
 #define BUFFER_INIT { 0, 0, NULL }
 
 static inline int
-push_char(buffer* b, int c) {
+push_char(buffer* b, int c)
+{
 	if (b->len + 1 >= b->alloc) {
 		size_t newsize = b->alloc ? b->alloc * 2 : 32;
 		char* newptr = realloc(b->str, newsize);
@@ -154,12 +155,14 @@ push_char(buffer* b, int c) {
 }
 
 static inline void
-clear(buffer* b) {
+clear(buffer* b)
+{
 	b->len = 0;
 }
 
 static inline void
-rstrip(buffer* b) {
+rstrip(buffer* b)
+{
 	while (b->len > 0) {
 		if (isspace(b->str[b->len - 1]))
 			--b->len;
@@ -169,7 +172,8 @@ rstrip(buffer* b) {
 }
 
 static inline const char*
-str(buffer* b) {
+str(buffer* b)
+{
 	b->str[b->len] = '\0';
 	return b->str;
 }
