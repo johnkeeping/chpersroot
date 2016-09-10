@@ -145,6 +145,7 @@ __chpersroot_compgen() {
     else
         builtin compgen "${args[@]}"
     fi
+    return ${PIPESTATUS[0]}
 }
 
 
